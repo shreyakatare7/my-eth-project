@@ -1,5 +1,6 @@
 const hre = require("hardhat");
 const crypto = require("crypto"); // For off-chain encryption simulation
+const { performance } = require("perf_hooks"); // For performance measuring
 
 // Simulated NuCypher (Off-Chain Encryption/Decryption)
 function encryptData(data, key) {
@@ -17,15 +18,14 @@ function decryptData(encryptedData, key) {
 }
 
 async function main() {
-    const [deployer] = await hre.ethers.getSigners(); 
-
+    const [deployer] = await hre.ethers.getSigners();
     const IoTAuth = await hre.ethers.getContractFactory("IoTAuth", deployer);
-    const contractAddress = "0x5fbdb2315678afecb367f032d93f642f64180aa3";
+    const contractAddress = "0x5fbdb2315678afecb367f032d93f642f64180aa3"; // Replace with your contract address
     const iotAuth = await IoTAuth.attach(contractAddress);
 
     console.log("Contract attached at:", contractAddress);
 
-    // List of device addresses
+    // List of device addresses (Assumed that you already have 10 clients)
     const deviceAddresses = [
         "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
         "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
@@ -36,21 +36,26 @@ async function main() {
         "0x976EA74026E726554dB657fA54763abd0C3a0aa9",
         "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955",
         "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f",
-        "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720",
-        "0xBcd4042DE499D14e55001CcbB24a551F3b954096",
-        "0x71bE63f3384f5fb98995898A86B02Fb2426c5788"
-        ];
+        "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720"
+    ];
 
-    for (let deviceAddress of deviceAddresses) {
-        console.log(`\nProcessing device: ${deviceAddress}...`);
+    const start = performance.now();  // Record the start time
 
-        // Register Device & Get Token
+    // Process each device concurrently
+    let promises = deviceAddresses.map(async (deviceAddress) => {
+        console.log(`Processing device: ${deviceAddress}...`);
+
         try {
+            // Record time for Handshake and Registration
+            const handshakeStart = performance.now();
             let token = await iotAuth.registerDevice(deviceAddress);
-            console.log(`Device registered with token: ${deviceAddress}: ${token.value}`);
+            const handshakeEnd = performance.now();
+            console.log(`Handshake (Registration) for ${deviceAddress} took: ${(handshakeEnd - handshakeStart).toFixed(2)} ms`);
 
+            console.log(`Device registered with token: ${deviceAddress}: ${token.value}`);
+            
             // Verify Token
-            let isValid = await iotAuth.verifyToken(deviceAddress, token);
+            let isValid = await iotAuth.verifyToken(deviceAddress, token.value);
             console.log(`Token validation result: ${isValid}`);
         } catch (error) {
             console.log(`Device already registered. Fetching token...`);
@@ -59,18 +64,23 @@ async function main() {
         }
 
         // Assign a Secret Key
+        const keyGenerationStart = performance.now();
         const deviceKey = crypto.randomBytes(32).toString("hex"); // Generate a 256-bit key
         await iotAuth.assignKey(deviceAddress, deviceKey);
-        console.log(`Key assigned successfully.`);
-
+        const keyGenerationEnd = performance.now();
+        console.log(`Key generation for ${deviceAddress} took: ${(keyGenerationEnd - keyGenerationStart).toFixed(2)} ms`);
+        
         // Retrieve & Confirm Key
         let storedKey = await iotAuth.getKey(deviceAddress);
         console.log(`Retrieved Key: ${storedKey}`);
 
-        // Encrypt & Store Data
+        // Encrypt Data
+        const encryptionStart = performance.now();
         const originalData = `Temperature: 25°C, Humidity: 60%`;
         const encryptedData = encryptData(originalData, deviceKey);
         await iotAuth.storeData(deviceAddress, encryptedData);
+        const encryptionEnd = performance.now();
+        console.log(`Encryption for ${deviceAddress} took: ${(encryptionEnd - encryptionStart).toFixed(2)} ms`);
         console.log(`Encrypted data stored on-chain.`);
 
         // Retrieve & Decrypt Data
@@ -78,9 +88,18 @@ async function main() {
         console.log(`Retrieved Encrypted Data: ${storedData}`);
 
         // Decrypt Data
+        const decryptionStart = performance.now();
         const decryptedData = decryptData(storedData, deviceKey);
+        const decryptionEnd = performance.now();
+        console.log(`Decryption for ${deviceAddress} took: ${(decryptionEnd - decryptionStart).toFixed(2)} ms`);
         console.log(`Decrypted Data: ${decryptedData}`);
-    }
+    });
+
+    // Wait for all promises to finish
+    await Promise.all(promises);
+
+    const end = performance.now();  // Record the end time
+    console.log(`Time to process ${deviceAddresses.length} devices: ${(end - start).toFixed(2)} ms`);
 }
 
 main()
