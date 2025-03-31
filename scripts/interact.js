@@ -1,8 +1,7 @@
 const hre = require("hardhat");
-const crypto = require("crypto"); // For off-chain encryption simulation
-const { performance } = require("perf_hooks"); // For performance measuring
+const crypto = require("crypto");
+const { performance } = require("perf_hooks");
 
-// Simulated NuCypher (Off-Chain Encryption/Decryption)
 function encryptData(data, key) {
     const cipher = crypto.createCipheriv("aes-256-cbc", Buffer.from(key, "hex"), Buffer.alloc(16, 0));
     let encrypted = cipher.update(data, "utf8", "hex");
@@ -20,12 +19,12 @@ function decryptData(encryptedData, key) {
 async function main() {
     const [deployer] = await hre.ethers.getSigners();
     const IoTAuth = await hre.ethers.getContractFactory("IoTAuth", deployer);
-    const contractAddress = "0x5fbdb2315678afecb367f032d93f642f64180aa3"; // Replace with your contract address
+    const contractAddress = "0x5fbdb2315678afecb367f032d93f642f64180aa3";
     const iotAuth = await IoTAuth.attach(contractAddress);
 
     console.log("Contract attached at:", contractAddress);
 
-    // List of device addresses (Assumed that you already have 10 clients)
+    // List of device addresses
     const deviceAddresses = [
         "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
         "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
