@@ -1,6 +1,6 @@
 const hre = require("hardhat");
-const crypto = require("crypto");
-const { performance } = require("perf_hooks");
+const crypto = require("crypto"); // For encryption/decryption
+const { performance } = require("perf_hooks"); // For performance metrics
 
 function encryptData(data, key) {
     const cipher = crypto.createCipheriv("aes-256-cbc", Buffer.from(key, "hex"), Buffer.alloc(16, 0));
